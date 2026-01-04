@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Music2, Upload, Mic, Loader2, FileAudio, Trash2, Sparkles } from 'lucide-react';
+import { Music2, Mic, Loader2, FileAudio, Trash2, Sparkles, ChevronLeft, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -27,7 +27,6 @@ export const CifrasTab = ({ cifras, onAddCifra, onRemoveCifra }: CifrasTabProps)
     if (file && (file.type.includes('audio') || file.type.includes('video'))) {
       setIsProcessing(true);
       
-      // Create a placeholder cifra while "processing"
       const newCifra: Cifra = {
         id: crypto.randomUUID(),
         name: file.name.replace(/\.(mp3|mp4|wav|m4a)$/i, ''),
@@ -37,9 +36,8 @@ export const CifrasTab = ({ cifras, onAddCifra, onRemoveCifra }: CifrasTabProps)
       };
       
       onAddCifra(newCifra);
-      toast.info('Processando música... A IA está transcrevendo!');
+      toast.info('Processando música...');
       
-      // Simulate AI processing (in real implementation, this would call the backend)
       setTimeout(() => {
         const updatedCifra: Cifra = {
           ...newCifra,
@@ -60,10 +58,10 @@ Do poder da inteligência artificial`,
         
         onAddCifra(updatedCifra);
         setIsProcessing(false);
-        toast.success('Cifra gerada com sucesso!');
+        toast.success('Cifra gerada!');
       }, 3000);
     } else {
-      toast.error('Por favor, selecione um arquivo de áudio (MP3) ou vídeo (MP4).');
+      toast.error('Selecione um arquivo de áudio ou vídeo');
     }
     e.target.value = '';
   }, [onAddCifra]);
@@ -77,31 +75,44 @@ Do poder da inteligência artificial`,
         className="h-full flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 glass-panel mb-4">
-          <Button variant="ghost" onClick={() => setSelectedCifra(null)}>
-            <Music2 className="w-5 h-5 mr-2" />
+        <div className="flex items-center justify-between mb-4">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => setSelectedCifra(null)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" />
             Voltar
           </Button>
-          <h2 className="font-display text-lg neon-text-magenta">{selectedCifra.name}</h2>
-          <div className="flex items-center gap-2 text-secondary">
-            <Sparkles className="w-4 h-4" />
-            <span className="text-sm">Gerado por IA</span>
+          <div className="flex items-center gap-1.5 text-secondary">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">IA</span>
+          </div>
+        </div>
+
+        {/* Song Title */}
+        <div className="mb-6">
+          <h2 className="text-xl font-bold">{selectedCifra.name}</h2>
+        </div>
+
+        {/* Chords Used */}
+        <div className="mb-6">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Acordes</p>
+          <div className="flex gap-2 flex-wrap">
+            {selectedCifra.chords.split(', ').map((chord, i) => (
+              <span 
+                key={i} 
+                className="px-3 py-1.5 rounded-lg bg-secondary/10 text-secondary border border-secondary/20 text-sm font-medium"
+              >
+                {chord}
+              </span>
+            ))}
           </div>
         </div>
 
         {/* Cifra Content */}
-        <div className="flex-1 glass-panel rounded-xl p-6 overflow-auto">
-          <div className="mb-4 pb-4 border-b border-border">
-            <h3 className="font-display text-sm text-muted-foreground mb-2">ACORDES USADOS</h3>
-            <div className="flex gap-2 flex-wrap">
-              {selectedCifra.chords.split(', ').map((chord, i) => (
-                <span key={i} className="px-3 py-1 rounded-full bg-secondary/20 text-secondary border border-secondary/30 font-display text-sm">
-                  {chord}
-                </span>
-              ))}
-            </div>
-          </div>
-          
+        <div className="flex-1 glass-panel p-5 overflow-auto">
           <pre className="font-mono text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
             {selectedCifra.lyrics}
           </pre>
@@ -118,8 +129,8 @@ Do poder da inteligência artificial`,
       className="h-full flex flex-col gap-6"
     >
       {/* Upload Area */}
-      <label className={`glass-panel p-8 rounded-xl border-2 border-dashed transition-all cursor-pointer group hover-glow ${
-        isProcessing ? 'border-secondary/60 pointer-events-none' : 'border-secondary/30 hover:border-secondary/60'
+      <label className={`glass-panel p-6 border-2 border-dashed transition-all cursor-pointer group hover-lift ${
+        isProcessing ? 'border-secondary/40 pointer-events-none' : 'border-secondary/20 hover:border-secondary/40'
       }`}>
         <input
           type="file"
@@ -128,66 +139,70 @@ Do poder da inteligência artificial`,
           className="hidden"
           disabled={isProcessing}
         />
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center group-hover:bg-secondary/20 transition-colors">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center group-hover:bg-secondary/20 transition-colors">
             {isProcessing ? (
-              <Loader2 className="w-8 h-8 text-secondary animate-spin" />
+              <Loader2 className="w-6 h-6 text-secondary animate-spin" />
             ) : (
-              <Mic className="w-8 h-8 text-secondary" />
+              <Wand2 className="w-6 h-6 text-secondary" />
             )}
           </div>
           <div>
-            <p className="font-display text-lg text-foreground">
-              {isProcessing ? 'Processando com IA...' : 'Envie sua música'}
+            <p className="font-semibold text-foreground">
+              {isProcessing ? 'Processando...' : 'Gerar cifra com IA'}
             </p>
             <p className="text-muted-foreground text-sm">
-              {isProcessing ? 'Transcrevendo e cifrando' : 'MP3, MP4, WAV ou M4A'}
+              {isProcessing ? 'Transcrevendo e cifrando' : 'Envie MP3, MP4, WAV ou M4A'}
             </p>
           </div>
         </div>
       </label>
 
-      {/* Info Banner */}
-      <div className="glass-panel p-4 rounded-xl border border-secondary/30 flex items-start gap-3">
-        <Sparkles className="w-5 h-5 text-secondary shrink-0 mt-0.5" />
+      {/* Info Card */}
+      <div className="glass-panel p-4 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center shrink-0">
+          <Sparkles className="w-4 h-4 text-secondary" />
+        </div>
         <div>
-          <p className="font-display text-sm text-secondary mb-1">Powered by AI</p>
-          <p className="text-xs text-muted-foreground">
-            A IA vai ouvir sua música, transcrever a letra e gerar as cifras automaticamente no estilo Cifra Club.
+          <p className="font-medium text-sm mb-0.5">Powered by AI</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Envie sua música e a IA vai transcrever a letra e gerar as cifras automaticamente.
           </p>
         </div>
       </div>
 
       {/* Cifras List */}
       <div className="flex-1 overflow-auto">
-        <h3 className="font-display text-xl mb-4 neon-text-magenta flex items-center gap-2">
-          <Music2 className="w-5 h-5" />
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+          <Music2 className="w-4 h-4" />
           Suas Cifras
         </h3>
 
         {cifras.length === 0 ? (
-          <div className="glass-panel p-8 rounded-xl text-center">
-            <FileAudio className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhuma cifra ainda</p>
-            <p className="text-sm text-muted-foreground/60">Envie uma música para gerar cifras</p>
+          <div className="glass-panel p-10 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+              <FileAudio className="w-7 h-7 text-muted-foreground" />
+            </div>
+            <p className="text-foreground font-medium mb-1">Nenhuma cifra</p>
+            <p className="text-sm text-muted-foreground">Envie uma música para começar</p>
           </div>
         ) : (
-          <div className="grid gap-3">
+          <div className="space-y-2">
             <AnimatePresence>
               {cifras.map((cifra, index) => (
                 <motion.div
                   key={cifra.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
                   transition={{ delay: index * 0.05 }}
-                  className={`glass-panel p-4 rounded-xl flex items-center justify-between hover-glow group ${
+                  className={`glass-panel p-4 flex items-center justify-between hover-lift group ${
                     cifra.status === 'completed' ? 'cursor-pointer' : ''
                   }`}
                   onClick={() => cifra.status === 'completed' && setSelectedCifra(cifra)}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                       cifra.status === 'processing' ? 'bg-muted' : 'bg-secondary/10'
                     }`}>
                       {cifra.status === 'processing' ? (
@@ -197,10 +212,10 @@ Do poder da inteligência artificial`,
                       )}
                     </div>
                     <div>
-                      <span className="font-medium block">{cifra.name}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <p className="font-medium text-sm">{cifra.name}</p>
+                      <p className="text-xs text-muted-foreground">
                         {cifra.status === 'processing' ? 'Processando...' : cifra.chords}
-                      </span>
+                      </p>
                     </div>
                   </div>
                   {cifra.status === 'completed' && (
@@ -212,7 +227,7 @@ Do poder da inteligência artificial`,
                         onRemoveCifra(cifra.id);
                         toast.success('Cifra removida');
                       }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
