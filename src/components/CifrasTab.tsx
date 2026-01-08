@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Music2, Mic, Loader2, FileAudio, Trash2, Sparkles, ChevronLeft, Wand2 } from 'lucide-react';
+import { Music2, Loader2, FileAudio, Trash2, Sparkles, ChevronLeft, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Cifra {
   id: string;
@@ -27,39 +28,67 @@ export const CifrasTab = ({ cifras, onAddCifra, onRemoveCifra }: CifrasTabProps)
     if (file && (file.type.includes('audio') || file.type.includes('video'))) {
       setIsProcessing(true);
       
+      const cifraId = crypto.randomUUID();
+      const fileName = file.name.replace(/\.(mp3|mp4|wav|m4a)$/i, '');
+      
       const newCifra: Cifra = {
-        id: crypto.randomUUID(),
-        name: file.name.replace(/\.(mp3|mp4|wav|m4a)$/i, ''),
+        id: cifraId,
+        name: fileName,
         lyrics: '',
         chords: '',
         status: 'processing',
       };
       
       onAddCifra(newCifra);
-      toast.info('Processando música...');
+      toast.info('Processando música com IA...');
       
-      setTimeout(() => {
-        const updatedCifra: Cifra = {
-          ...newCifra,
-          status: 'completed',
-          lyrics: `[Verso 1]
-Am        G           C
-Exemplo de cifra gerada pela IA
-F            G         Am
-A música foi transcrita automaticamente
+      try {
+        // Convert file to base64
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let i = 0; i < uint8Array.length; i += chunkSize) {
+          const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
+          binary += String.fromCharCode.apply(null, Array.from(chunk));
+        }
+        const audioBase64 = btoa(binary);
+
+        // Call the edge function
+        const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+          body: { audioBase64, fileName }
+        });
+
+        if (error) throw error;
+
+        if (data?.success) {
+          const updatedCifra: Cifra = {
+            id: cifraId,
+            name: fileName,
+            status: 'completed',
+            lyrics: data.lyrics || 'Não foi possível transcrever a letra.',
+            chords: data.chords?.join(', ') || 'Acordes não identificados',
+          };
           
-[Refrão]
-C          G          Am
-Esta é uma demonstração
-F          G          C
-Do poder da inteligência artificial`,
-          chords: 'Am, G, C, F',
+          onAddCifra(updatedCifra);
+          toast.success('Cifra gerada com sucesso!');
+        } else {
+          throw new Error(data?.error || 'Erro ao processar');
+        }
+      } catch (error) {
+        console.error('Error transcribing:', error);
+        const errorCifra: Cifra = {
+          id: cifraId,
+          name: fileName,
+          status: 'error',
+          lyrics: 'Erro ao processar a música. Tente novamente.',
+          chords: '',
         };
-        
-        onAddCifra(updatedCifra);
+        onAddCifra(errorCifra);
+        toast.error('Erro ao processar a música');
+      } finally {
         setIsProcessing(false);
-        toast.success('Cifra gerada!');
-      }, 3000);
+      }
     } else {
       toast.error('Selecione um arquivo de áudio ou vídeo');
     }
