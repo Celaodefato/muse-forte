@@ -54,9 +54,9 @@ export const CifrasTab = ({ cifras, onAddCifra, onRemoveCifra }: CifrasTabProps)
         }
         const audioBase64 = btoa(binary);
 
-        // Call the edge function
+        // Call the edge function with mimeType for proper audio processing
         const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-          body: { audioBase64, fileName }
+          body: { audioBase64, fileName, mimeType: file.type }
         });
 
         if (error) throw error;
