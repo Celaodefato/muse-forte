@@ -144,20 +144,41 @@ RETORNE APENAS A CIFRA FORMATADA NO ESTILO CIFRACLUB, SEM EXPLICAÇÕES.`
             content: [
               {
                 type: "text",
-                text: `Você é um especialista em transcrição de músicas brasileiras e cifras.
+                text: `Você é um MÚSICO PROFISSIONAL e ESPECIALISTA em transcrição e harmonia.
 
-INSTRUÇÕES:
-1. Ouça atentamente este áudio e transcreva a LETRA REAL que você ouve
-2. Adicione os acordes no formato [Acorde] baseado na harmonia que você identifica no áudio
-3. Se não conseguir identificar algo claramente, use [?]
-4. NÃO invente letras - transcreva apenas o que você realmente ouve
+SUA TAREFA PRINCIPAL:
+1. OUÇA ATENTAMENTE o áudio e identifique:
+   - A LETRA exata cantada (transcreva fielmente)
+   - Os ACORDES REAIS tocados pelo instrumento (violão/guitarra/piano)
+   - O TOM da música (analise a nota de resolução e os acordes)
 
-Formato de saída:
----LETRA---
-(letra transcrita com acordes inline no formato [Acorde])
+2. ANÁLISE HARMÔNICA:
+   - Identifique o acorde que soa como "casa" (tônica) - esse é o TOM
+   - Preste atenção nas mudanças de acorde e quando elas acontecem
+   - Note inversões e acordes de passagem
+   - Identifique se é tom maior ou menor
+
+3. FORMATO DE SAÍDA (estilo CIFRACLUB):
+   - Acordes ficam ACIMA das sílabas onde são tocados
+   - Use seções: [Intro], [Verso], [Refrão], [Ponte], etc.
+   - Alinhe os acordes com espaços para posição correta
+
+IMPORTANTE:
+- OUÇA os acordes reais, não invente baseado em teoria
+- Se ouvir um acorde com sétima, escreva (ex: G7, Am7)
+- Se ouvir baixo diferente, use slash chord (ex: C/E)
+- Transcreva EXATAMENTE o que ouve, incluindo pausas e repetições
+
+---RESPOSTA---
+TOM: [identificar o tom real da música]
+
+[Seção]
+Acorde1    Acorde2
+Linha da letra aqui
+
 ---FIM---
 
-Transcreva agora o áudio anexado:`
+Agora transcreva este áudio:`
               },
               {
                 type: "input_audio",
@@ -197,19 +218,35 @@ Transcreva agora o áudio anexado:`
 
     console.log("AI Response received, parsing content...");
 
-    // Parse the response to extract lyrics and chords
+    // Parse the response to extract lyrics, chords and detected key
     let transcribedLyrics = content;
     let chords: string[] = [];
+    let detectedKey = '';
 
-    // Extract chords from the content (look for [Chord] patterns)
-    const chordMatches = content.match(/\[([A-G][#b]?m?7?M?sus?4?2?dim?aug?\/[A-G]?[#b]?|[A-G][#b]?m?7?M?sus?4?2?dim?aug?)\]/g);
+    // Extract detected key
+    const keyMatch = content.match(/TOM:\s*([A-G][#b]?m?)/i);
+    if (keyMatch) {
+      detectedKey = keyMatch[1];
+    }
+
+    // Extract chords from CifraClub format (chords on their own lines or with spaces)
+    const chordMatches = content.match(/\b([A-G][#b]?(?:m|M|dim|aug|sus[24]?|add\d+|maj7?|7|9|11|13)?(?:\/[A-G][#b]?)?)\b/g);
     if (chordMatches) {
-      const uniqueChords = [...new Set(chordMatches.map((c: string) => c.replace(/[\[\]]/g, '')))];
+      // Filter out common words that might match the pattern
+      const filtered = chordMatches.filter((c: string) => 
+        !['A', 'E'].includes(c) || content.includes(`${c} `) || content.includes(` ${c}`)
+      );
+      const uniqueChords = [...new Set(filtered)];
       chords = uniqueChords as string[];
     }
 
     // Clean up the lyrics section
-    if (content.includes('---LETRA---')) {
+    if (content.includes('---RESPOSTA---')) {
+      const match = content.match(/---RESPOSTA---([\s\S]*?)---FIM---/);
+      if (match) {
+        transcribedLyrics = match[1].trim();
+      }
+    } else if (content.includes('---LETRA---')) {
       const match = content.match(/---LETRA---([\s\S]*?)---FIM---/);
       if (match) {
         transcribedLyrics = match[1].trim();
@@ -220,6 +257,7 @@ Transcreva agora o áudio anexado:`
       JSON.stringify({ 
         lyrics: transcribedLyrics, 
         chords,
+        detectedKey,
         success: true 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
