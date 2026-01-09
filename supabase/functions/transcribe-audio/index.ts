@@ -12,15 +12,89 @@ serve(async (req) => {
   }
 
   try {
-    const { audioBase64, fileName, mimeType } = await req.json();
+    const { audioBase64, fileName, mimeType, formatOnly, lyrics, key, songName } = await req.json();
     
-    if (!audioBase64) {
-      throw new Error('No audio data provided');
-    }
-
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
+    }
+
+    // Mode 1: Format existing lyrics in CifraClub style
+    if (formatOnly && lyrics && key) {
+      console.log(`Formatting lyrics for: ${songName} in key: ${key}`);
+      
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "user",
+              content: `Você é um especialista em cifras musicais no estilo CIFRACLUB.
+
+TAREFA: Reformatar a letra abaixo no estilo EXATO do CifraClub.
+
+TOM DA MÚSICA: ${key}
+
+REGRAS DO ESTILO CIFRACLUB:
+1. Os acordes ficam ACIMA da sílaba onde devem ser tocados
+2. Use espaços para posicionar o acorde na posição correta
+3. Mantenha uma linha para acordes e outra para a letra
+4. Agrupe em seções: [Intro], [Verso], [Refrão], [Ponte], etc.
+5. Se houver acordes inline como [Am], extraia-os para a linha de cima
+
+EXEMPLO DO FORMATO CORRETO:
+[Intro] C  G  Am  F
+
+[Verso]
+C                G
+Aqui vai a letra da música
+Am               F
+Continuando na próxima linha
+
+[Refrão]
+C        G       Am      F
+Esta é a parte do refrão
+
+LETRA PARA FORMATAR:
+${lyrics}
+
+RETORNE APENAS A CIFRA FORMATADA, SEM EXPLICAÇÕES.`
+            }
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("AI gateway error:", response.status, errorText);
+        throw new Error(`AI gateway error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const formattedLyrics = data.choices?.[0]?.message?.content || "";
+
+      // Extract chords from formatted content
+      const chordMatches = formattedLyrics.match(/\b([A-G][#b]?(?:m|M|dim|aug|sus[24]?|add\d+|maj7?|7|9|11|13)?(?:\/[A-G][#b]?)?)\b/g);
+      const uniqueChords = chordMatches ? [...new Set(chordMatches)] : [];
+
+      return new Response(
+        JSON.stringify({ 
+          lyrics: formattedLyrics, 
+          chords: uniqueChords,
+          success: true 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Mode 2: Transcribe audio
+    if (!audioBase64) {
+      throw new Error('No audio data provided');
     }
 
     console.log(`Processing audio file: ${fileName}, mimeType: ${mimeType}`);
@@ -94,7 +168,7 @@ Transcreva agora o áudio anexado:`
     console.log("AI Response received, parsing content...");
 
     // Parse the response to extract lyrics and chords
-    let lyrics = content;
+    let transcribedLyrics = content;
     let chords: string[] = [];
 
     // Extract chords from the content (look for [Chord] patterns)
@@ -108,13 +182,13 @@ Transcreva agora o áudio anexado:`
     if (content.includes('---LETRA---')) {
       const match = content.match(/---LETRA---([\s\S]*?)---FIM---/);
       if (match) {
-        lyrics = match[1].trim();
+        transcribedLyrics = match[1].trim();
       }
     }
 
     return new Response(
       JSON.stringify({ 
-        lyrics, 
+        lyrics: transcribedLyrics, 
         chords,
         success: true 
       }),
