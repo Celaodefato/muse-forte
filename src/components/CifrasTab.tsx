@@ -1,9 +1,15 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Music2, Loader2, FileAudio, Trash2, Sparkles, ChevronLeft, Wand2 } from 'lucide-react';
+import { Music2, Loader2, FileAudio, Trash2, Sparkles, ChevronLeft, Wand2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+
+const MUSICAL_KEYS = [
+  'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
+  'Cm', 'C#m', 'Dm', 'D#m', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am', 'A#m', 'Bm'
+];
 
 interface Cifra {
   id: string;
@@ -11,6 +17,8 @@ interface Cifra {
   lyrics: string;
   chords: string;
   status: 'processing' | 'completed' | 'error';
+  formattedLyrics?: string;
+  selectedKey?: string;
 }
 
 interface CifrasTabProps {
@@ -22,6 +30,51 @@ interface CifrasTabProps {
 export const CifrasTab = ({ cifras, onAddCifra, onRemoveCifra }: CifrasTabProps) => {
   const [selectedCifra, setSelectedCifra] = useState<Cifra | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isFormatting, setIsFormatting] = useState(false);
+  const [selectedKey, setSelectedKey] = useState<string>('');
+
+  const formatAsCifraClub = useCallback(async (cifra: Cifra, key: string) => {
+    if (!key) {
+      toast.error('Selecione o tom da música');
+      return;
+    }
+    
+    setIsFormatting(true);
+    toast.info('Formatando cifra no estilo CifraClub...');
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+        body: { 
+          formatOnly: true,
+          lyrics: cifra.lyrics,
+          key: key,
+          songName: cifra.name
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        const updatedCifra: Cifra = {
+          ...cifra,
+          formattedLyrics: data.lyrics,
+          selectedKey: key,
+          chords: data.chords?.join(', ') || cifra.chords,
+        };
+        
+        onAddCifra(updatedCifra);
+        setSelectedCifra(updatedCifra);
+        toast.success('Cifra formatada com sucesso!');
+      } else {
+        throw new Error(data?.error || 'Erro ao formatar');
+      }
+    } catch (error) {
+      console.error('Error formatting:', error);
+      toast.error('Erro ao formatar a cifra');
+    } finally {
+      setIsFormatting(false);
+    }
+  }, [onAddCifra]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,12 +174,55 @@ export const CifrasTab = ({ cifras, onAddCifra, onRemoveCifra }: CifrasTabProps)
         </div>
 
         {/* Song Title */}
-        <div className="mb-6">
+        <div className="mb-4">
           <h2 className="text-xl font-bold">{selectedCifra.name}</h2>
+          {selectedCifra.selectedKey && (
+            <p className="text-sm text-secondary mt-1">Tom: {selectedCifra.selectedKey}</p>
+          )}
         </div>
 
+        {/* Key Selector & Format Button */}
+        {!selectedCifra.formattedLyrics && (
+          <div className="glass-panel p-4 mb-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              Formatar no estilo CifraClub
+            </p>
+            <div className="flex gap-3 items-center">
+              <Select value={selectedKey} onValueChange={setSelectedKey}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Tom" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MUSICAL_KEYS.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {key}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={() => formatAsCifraClub(selectedCifra, selectedKey)}
+                disabled={isFormatting || !selectedKey}
+                className="flex-1"
+              >
+                {isFormatting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Formatando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Formatar Cifra
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Chords Used */}
-        <div className="mb-6">
+        <div className="mb-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Acordes</p>
           <div className="flex gap-2 flex-wrap">
             {selectedCifra.chords.split(', ').map((chord, i) => (
@@ -143,7 +239,7 @@ export const CifrasTab = ({ cifras, onAddCifra, onRemoveCifra }: CifrasTabProps)
         {/* Cifra Content */}
         <div className="flex-1 glass-panel p-5 overflow-auto">
           <pre className="font-mono text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
-            {selectedCifra.lyrics}
+            {selectedCifra.formattedLyrics || selectedCifra.lyrics}
           </pre>
         </div>
       </motion.div>
