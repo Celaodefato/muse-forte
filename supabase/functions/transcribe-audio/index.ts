@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { audioBase64, fileName } = await req.json();
+    const { audioBase64, fileName, mimeType } = await req.json();
     
     if (!audioBase64) {
       throw new Error('No audio data provided');
@@ -23,16 +23,9 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log(`Processing audio file: ${fileName}`);
+    console.log(`Processing audio file: ${fileName}, mimeType: ${mimeType}`);
 
-    // First, transcribe the audio using Gemini's multimodal capabilities
-    const transcriptionPrompt = `Você é um especialista em transcrição de músicas brasileiras. 
-Analise este áudio e transcreva a LETRA COMPLETA da música.
-Retorne APENAS a letra, sem comentários adicionais.
-Se não conseguir identificar a letra claramente, indique as partes incertas com [?].`;
-
-    // For audio transcription, we'll use a text-based approach
-    // Send a request to analyze and generate lyrics/chords
+    // Use Gemini's multimodal capabilities to actually transcribe the audio
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -43,23 +36,33 @@ Se não conseguir identificar a letra claramente, indique as partes incertas com
         model: "google/gemini-2.5-flash",
         messages: [
           {
-            role: "system",
-            content: `Você é um especialista em música brasileira, capaz de criar cifras no estilo do CifraClub.
-Quando receber o nome de uma música, você deve:
-1. Transcrever a letra completa
-2. Adicionar os acordes no formato [Acorde] antes de cada trecho
-3. Manter o formato limpo e legível
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Você é um especialista em transcrição de músicas brasileiras e cifras.
+
+INSTRUÇÕES:
+1. Ouça atentamente este áudio e transcreva a LETRA REAL que você ouve
+2. Adicione os acordes no formato [Acorde] baseado na harmonia que você identifica no áudio
+3. Se não conseguir identificar algo claramente, use [?]
+4. NÃO invente letras - transcreva apenas o que você realmente ouve
 
 Formato de saída:
 ---LETRA---
-(letra com acordes inline no formato [Acorde])
----FIM---`
-          },
-          {
-            role: "user",
-            content: `Crie uma cifra completa para a música do arquivo: "${fileName}". 
-Se você conhecer essa música, transcreva a letra real com os acordes corretos.
-Se não conhecer, crie uma letra e acordes que façam sentido com o título/nome do arquivo.`
+(letra transcrita com acordes inline no formato [Acorde])
+---FIM---
+
+Transcreva agora o áudio anexado:`
+              },
+              {
+                type: "input_audio",
+                input_audio: {
+                  data: audioBase64,
+                  format: mimeType?.includes('mp3') || mimeType?.includes('mpeg') ? 'mp3' : 'wav'
+                }
+              }
+            ]
           }
         ],
       }),
