@@ -34,36 +34,66 @@ serve(async (req) => {
           messages: [
             {
               role: "user",
-              content: `Você é um especialista em cifras musicais no estilo CIFRACLUB.
+              content: `Você é um ESPECIALISTA em harmonia musical e cifras no estilo CIFRACLUB.
 
-TAREFA: Reformatar a letra abaixo no estilo EXATO do CifraClub.
+TAREFA: Analisar a letra e criar uma cifra HARMONICAMENTE CORRETA no tom informado.
 
 TOM DA MÚSICA: ${key}
 
-REGRAS DO ESTILO CIFRACLUB:
-1. Os acordes ficam ACIMA da sílaba onde devem ser tocados
-2. Use espaços para posicionar o acorde na posição correta
-3. Mantenha uma linha para acordes e outra para a letra
-4. Agrupe em seções: [Intro], [Verso], [Refrão], [Ponte], etc.
-5. Se houver acordes inline como [Am], extraia-os para a linha de cima
+TEORIA HARMÔNICA - USE ISSO PARA ESCOLHER ACORDES:
+Para tom MAIOR (ex: ${key}):
+- I = ${key} (tônica)
+- ii = acorde menor um tom acima
+- iii = acorde menor 
+- IV = acorde maior (subdominante)
+- V = acorde maior (dominante) - geralmente V7
+- vi = acorde menor relativo
+- vii° = diminuto
 
-EXEMPLO DO FORMATO CORRETO:
+Para tom MENOR:
+- i = tônica menor
+- III = relativo maior
+- iv = subdominante menor
+- v ou V7 = dominante
+- VI = sexto grau maior
+- VII = sétimo grau maior
+
+PROGRESSÕES COMUNS NO TOM ${key}:
+- I - IV - V - I (básica)
+- I - V - vi - IV (pop)
+- I - vi - IV - V (romântica)
+- ii - V - I (jazz)
+- I - IV - I - V (blues/country)
+
+REGRAS DO ESTILO CIFRACLUB:
+1. Acordes ficam ACIMA da sílaba exata onde mudam
+2. Use espaços para alinhar perfeitamente
+3. Organize em: [Intro], [Verso], [Pré-Refrão], [Refrão], [Ponte], [Solo], [Outro]
+4. Acordes devem fazer sentido harmônico no tom ${key}
+
+EXEMPLO NO TOM DE C:
 [Intro] C  G  Am  F
 
-[Verso]
-C                G
-Aqui vai a letra da música
-Am               F
-Continuando na próxima linha
+[Verso 1]
+C                    G
+  Primeira linha da letra aqui
+Am                   F
+  Segunda linha continua aqui
 
 [Refrão]
 C        G       Am      F
-Esta é a parte do refrão
+Parte mais forte do refrão
 
-LETRA PARA FORMATAR:
+IMPORTANTE:
+- ANALISE a melodia implícita na letra para posicionar acordes
+- USE acordes que fazem sentido no tom ${key}
+- POSICIONE mudanças de acorde em sílabas tônicas
+- SE a letra menciona acordes errados, CORRIJA para o tom ${key}
+
+LETRA PARA CIFRAR:
 ${lyrics}
 
-RETORNE APENAS A CIFRA FORMATADA, SEM EXPLICAÇÕES.`
+RETORNE APENAS A CIFRA FORMATADA NO ESTILO CIFRACLUB, SEM EXPLICAÇÕES.`
             }
           ],
         }),
