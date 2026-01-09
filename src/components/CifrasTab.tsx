@@ -19,6 +19,7 @@ interface Cifra {
   status: 'processing' | 'completed' | 'error';
   formattedLyrics?: string;
   selectedKey?: string;
+  detectedKey?: string;
 }
 
 interface CifrasTabProps {
@@ -121,10 +122,15 @@ export const CifrasTab = ({ cifras, onAddCifra, onRemoveCifra }: CifrasTabProps)
             status: 'completed',
             lyrics: data.lyrics || 'Não foi possível transcrever a letra.',
             chords: data.chords?.join(', ') || 'Acordes não identificados',
+            detectedKey: data.detectedKey || undefined,
           };
           
           onAddCifra(updatedCifra);
-          toast.success('Cifra gerada com sucesso!');
+          if (data.detectedKey) {
+            toast.success(`Cifra gerada! Tom detectado: ${data.detectedKey}`);
+          } else {
+            toast.success('Cifra gerada com sucesso!');
+          }
         } else {
           throw new Error(data?.error || 'Erro ao processar');
         }
@@ -176,8 +182,13 @@ export const CifrasTab = ({ cifras, onAddCifra, onRemoveCifra }: CifrasTabProps)
         {/* Song Title */}
         <div className="mb-4">
           <h2 className="text-xl font-bold">{selectedCifra.name}</h2>
-          {selectedCifra.selectedKey && (
-            <p className="text-sm text-secondary mt-1">Tom: {selectedCifra.selectedKey}</p>
+          {(selectedCifra.detectedKey || selectedCifra.selectedKey) && (
+            <p className="text-sm text-secondary mt-1">
+              Tom: {selectedCifra.selectedKey || selectedCifra.detectedKey}
+              {selectedCifra.detectedKey && !selectedCifra.selectedKey && (
+                <span className="text-muted-foreground ml-1">(detectado pela IA)</span>
+              )}
+            </p>
           )}
         </div>
 
